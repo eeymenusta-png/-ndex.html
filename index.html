@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Eymen AI Ultra Plus</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+:root{--n1:#00ffd5;--n2:#00aaff;--bg:#020304}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Inter,sans-serif;
+  background:radial-gradient(circle at top,#0b2733,#020304);
+  color:#fff;height:100dvh;display:flex;flex-direction:column
+}
+header{
+  height:56px;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(0,255,213,.3)
+}
+header h1{
+  font-size:18px;font-weight:800;letter-spacing:4px;
+  background:linear-gradient(90deg,var(--n1),var(--n2));
+  -webkit-background-clip:text;color:transparent
+}
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:86%;padding:14px 18px;border-radius:20px;font-size:15px}
+.user{align-self:flex-end;background:linear-gradient(135deg,#0084ff,#00d4ff)}
+.ai{align-self:flex-start;background:rgba(255,255,255,.08)}
+.typing{opacity:.6;font-style:italic}
+footer{
+  display:flex;gap:8px;padding:10px;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(14px)
+}
+input[type=text]{flex:1;border:none;border-radius:999px;padding:14px}
+button{
+  width:46px;height:46px;border-radius:50%;border:none;
+  background:linear-gradient(135deg,var(--n1),var(--n2))
+}
+input[type=file]{display:none}
+</style>
+</head>
+
+<body>
+
+<header><h1>EYMEN AI+</h1></header>
+<div id="chat"></div>
+
+<footer>
+  <label for="img">🖼️</label>
+  <input type="file" id="img" accept="image/*">
+  <input id="inp" type="text" placeholder="Yaz ya da resim at…">
+  <button id="send">➤</button>
+</footer>
+
+<script>
+const chat=document.getElementById("chat");
+const inp=document.getElementById("inp");
+const img=document.getElementById("img");
+
+let KEY=localStorage.getItem("OPENAI_KEY");
+if(!KEY){KEY=prompt("OpenAI API Key:");localStorage.setItem("OPENAI_KEY",KEY)}
+
+function add(t,c){
+  const d=document.createElement("div");
+  d.className="msg "+c;
+  d.textContent=t;
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
+  return d;
+}
+
+async function send(){
+  const q=inp.value.trim();
+  if(!q && !img.files[0]) return;
+  inp.value="";
+  add(q||"🖼️ Resim gönderildi","user");
+
+  const typing=add("Eymen AI düşünüyor…","ai typing");
+
+  let content=[{type:"text",text:q||"Bu resme bak"}];
+
+  if(img.files[0]){
+    const b=await img.files[0].arrayBuffer();
+    const base64=btoa(String.fromCharCode(...new Uint8Array(b)));
+    content.push({
+      type:"image_url",
+      image_url:{url:"data:image/jpeg;base64,"+base64}
+    });
+    img.value="";
+  }
+
+  try{
+    const r=await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Authorization":"Bearer "+KEY,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        model:"gpt-4o",
+        messages:[
+          {
+            role:"system",
+            content:
+            "Türkçe konuş. Samimi ve esprili ol. \
+Hafif argo ve tatlı küfür serbest (lan, yahu, saçmalık vs). \
+Hakaret, nefret, hedefli sövme yok. \
+Kısa ama zeki cevap ver."
+          },
+          {role:"user",content:content}
+        ]
+      })
+    });
+
+    const j=await r.json();
+    typing.remove();
+    add(j.choices[0].message.content,"ai");
+
+  }catch{
+    typing.textContent="Ulan bağlantı gitti 😅";
+  }
+}
+
+document.getElementById("send").onclick=send;
+inp.onkeydown=e=>e.key==="Enter"&&send();
+
+add("Hazırım. Yaz, konuş, resim at… kafam çalışıyor 😏","ai");
+</script>
+
+</body>
+</html>
